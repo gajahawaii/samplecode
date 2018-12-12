@@ -1,0 +1,126 @@
+{
+  "Comment": "An example of the step function sample.",
+  "StartAt": "Parallel",
+  "States": {
+    "Parallel": {
+      "Type": "Parallel",
+      "Next": "FinalState",
+      "Branches": [
+        {
+          "StartAt": "submit crawling job A",
+          "States": {
+            "submit crawling job A": { 
+              "Type": "Pass",
+              "Result": {
+                "id" : "1"
+              },
+              "ResultPath": "$.userId",
+              "Next": "crawling A"
+            },
+            "crawling A": { 
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:ap-northeast-1:400329627099:function:crawling_slideshare",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "MaxAttempts": 2  
+                }
+              ],
+              "ResultPath": "$.offset",
+              "Next": "Job A complete?"
+            },
+            "Job A complete?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.offset",
+                  "NumericGreaterThanEquals": 0,
+                  "Next": "crawling A"
+                }
+              ],
+              "Default": "complete job A"
+            },
+            "complete job A": { 
+              "Type": "Pass",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "submit crawling job B",
+          "States": {
+            "submit crawling job B": { 
+              "Type": "Pass",
+              "Result": {
+                "id" : "2"
+              },
+              "ResultPath": "$.userId",
+              "Next": "crawling B"
+            },
+            "crawling B": { 
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:ap-northeast-1:400329627099:function:crawling_slideshare",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "MaxAttempts": 2                
+                }
+              ],
+              "ResultPath": "$.offset",
+              "Next": "Job B complete?"
+            },
+            "Job B complete?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.offset",
+                  "NumericGreaterThanEquals": 0,
+                  "Next": "crawling B"
+                }
+              ],
+              "Default": "complete job B"
+            },
+            "complete job B": { 
+              "Type": "Pass",
+              "End": true
+            }
+          }
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["CustomError"],
+          "Next": "CustomErrorFallback"
+        },
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "Next": "ReservedTypeFallback"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "CatchAllFallback"
+        }
+      ]
+    },
+    "CustomErrorFallback": {
+      "Type": "Pass",
+      "Next": "FailState"
+    },
+    "ReservedTypeFallback": {
+      "Type": "Pass",
+      "Next": "FailState"
+    },
+    "CatchAllFallback": {
+      "Type": "Pass",
+      "Next": "FailState"
+    },
+    "FinalState": {
+      "Type": "Pass",
+      "End": true
+    },
+    "FailState": {
+      "Type": "Fail",
+      "Cause": "FallbackError."
+    }
+  }
+}
